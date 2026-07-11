@@ -1,16 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
 import { getRegionForLevel } from '../constants/events';
 import { 
   Compass, Flame, ShieldAlert, Award, Calendar, 
   Hammer, Scissors, Eye, AlertCircle, Sparkles, Check, Scroll
 } from 'lucide-react';
+import { PartyPanel } from './PartyPanel';
 
 export const Dashboard: React.FC = () => {
   const { 
     player, startAdventure, adventureLog, quests, 
     claimDailyReward 
   } = useGame();
+
+  const [showParty, setShowParty] = useState(false);
 
   if (!player) return null;
 
@@ -68,11 +71,13 @@ export const Dashboard: React.FC = () => {
 
         <div style={{ display: 'flex', gap: '20px', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
           <span>🏃‍♂️ Sprint</span>
-          <span>👥 Party</span>
+          <span onClick={() => setShowParty(true)} style={{ cursor: 'pointer' }} className="hover-gold">👥 Party</span>
           <span>🏰 Dungeons</span>
           <span>👹 Bosses</span>
         </div>
       </section>
+
+      {showParty && <PartyPanel onClose={() => setShowParty(false)} />}
 
       {/* 2. Middle Row grids (Recent Activity & Daily Rewards) */}
       <div className="dashboard-grid">

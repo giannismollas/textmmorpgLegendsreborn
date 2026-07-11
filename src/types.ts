@@ -55,6 +55,8 @@ export interface Player {
   total_crafts: number;
   pvp_wins: number;
   professions: PlayerProfessions;
+  party_id?: string;
+  party_ready?: boolean;
 }
 
 export interface Quest {
@@ -123,6 +125,8 @@ export interface AdventureEvent {
   title: string;
   description: string;
   monster?: MonsterData;
+  monster_hp?: number;
+  combat_logs?: string[];
   gathering?: GatheringNodeData;
   merchantItems?: Item[];
   quest?: {
@@ -148,4 +152,30 @@ export interface Job {
   xpReward: number;
   levelRequired: number;
 }
+export interface PartyMember {
+  id: string;
+  name: string;
+  class: 'Warrior' | 'Mage' | 'Rogue' | 'Ranger';
+  level: number;
+  hp: number;
+  max_hp: number;
+  ready: boolean;
+}
 
+export interface Party {
+  id: string;
+  leader_id: string;
+  leader_name: string;
+  status: 'lobby' | 'adventuring';
+  members: PartyMember[];
+  current_event?: AdventureEvent & {
+    monster_hp?: number;
+    combat_logs?: string[];
+  };
+}
+
+export interface PartyInvite {
+  id: string;
+  sender_name: string;
+  party_id: string;
+}

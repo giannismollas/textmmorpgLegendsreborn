@@ -9,7 +9,8 @@ export const AdventureEvent: React.FC = () => {
   const { 
     activeEvent, fightMonster, gatherMaterials, claimChest, 
     completeQuestEvent, interactMerchant, dismissEvent, player, inventory, quests,
-    dungeonRoom, advanceDungeon, claimDungeonTreasure
+    dungeonRoom, advanceDungeon, claimDungeonTreasure,
+    party, coopFightMonster
   } = useGame();
 
   const [fightStarted, setFightStarted] = useState(false);
@@ -24,8 +25,79 @@ export const AdventureEvent: React.FC = () => {
       case 'Boss':
         const monster = activeEvent.monster!;
         const isBoss = activeEvent.type === 'Boss';
-        
-        // Check if combat has already been simulated (description will have combat logs inside)
+
+        // Render Co-op adventure layout if in a party
+        if (party) {
+          const monsterHP = activeEvent.monster_hp !== undefined ? activeEvent.monster_hp : monster.hp;
+          const isCoopFinished = monsterHP <= 0 || activeEvent.title.includes('Victory') || activeEvent.title.includes('Defeat');
+          const logs = activeEvent.combat_logs || [];
+
+          return (
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.2)', padding: '8px 12px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.8rem' }}>
+                <span>👥</span>
+                <span>Co-Op Party Hunt: <strong>{party.members.map(m => m.name).join(', ')}</strong></span>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px', background: 'rgba(255, 255, 255, 0.02)', padding: '16px', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <h4 style={{ margin: 0, fontWeight: 'bold' }}>👹 {monster.name}</h4>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>❤️ {monsterHP}/{monster.hp} HP</span>
+                </div>
+                <div className="progress-container" style={{ height: '10px', marginTop: '6px' }}>
+                  <div className="progress-fill hp" style={{ width: `${(monsterHP / monster.hp) * 100}%`, height: '100%' }}></div>
+                </div>
+              </div>
+
+              <p style={{ fontStyle: 'italic', fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '16px' }}>
+                {activeEvent.description}
+              </p>
+
+              {logs.length > 0 && (
+                <div className="combat-logs-console" style={{ maxHeight: '120px' }}>
+                  {logs.map((log: string, idx: number) => (
+                    <div key={idx} style={{
+                      color: log.includes('struck') ? '#22c55e' : 
+                             log.includes('attacks') ? '#ef4444' : '#94a3b8'
+                    }}>
+                      {log}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '12px' }}>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '4px' }}>Companion HP Status</div>
+                {party.members.map(m => (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.75rem', background: 'rgba(255,255,255,0.01)', padding: '6px 10px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.02)' }}>
+                    <span style={{ fontWeight: 'bold' }}>{m.name} ({m.class})</span>
+                    <span style={{ color: m.hp <= 0 ? 'var(--accent-red)' : 'var(--text-muted)' }}>❤️ {m.hp}/{m.max_hp} HP</span>
+                  </div>
+                ))}
+              </div>
+
+              {!isCoopFinished ? (
+                <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+                  <button className="btn btn-primary" onClick={coopFightMonster} style={{ flex: 1 }}>
+                    <Swords size={16} />
+                    <span>CO-OP ATTACK</span>
+                  </button>
+                  <button className="btn btn-secondary" onClick={dismissEvent} style={{ flex: 1 }}>
+                    <span>Leave Combat</span>
+                  </button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
+                  <button className="btn btn-primary" onClick={dismissEvent}>
+                    Return to Lobby
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // Standard Solo layout
         const isCombatFinished = activeEvent.description.includes('Victory') || activeEvent.description.includes('Defeat');
 
         return (

@@ -2,12 +2,13 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   Player, Item, Quest, ChatMessage, MarketListing, 
   AdventureEvent, MonsterData, GatheringNodeData,
-  ItemType, ItemRarity
+  ItemType, ItemRarity, Party, PartyMember, PartyInvite
 } from '../types';
 import { generateRandomItem, CRAFTING_RECIPES } from '../constants/items';
 import { generateRandomEvent } from '../constants/events';
 import { getSupabase, isSupabaseConfigured, saveCredentials } from '../supabase';
 import { JOBS_DATABASE } from '../constants/jobs';
+import { generateCoopDescription } from '../utils/narrative';
 
 interface GameContextType {
   user: { email: string } | null;
@@ -34,7 +35,7 @@ interface GameContextType {
   gatherMaterials: () => void;
   claimChest: () => void;
   completeQuestEvent: () => void;
-  interactMerchant: (action: 'buy' | 'sell' | 'ignore', itemToBuy?: Item) => void;
+  interactMerchant: (action: 'buy' | 'sell', itemToBuy?: Item) => void;
   dismissEvent: () => void;
   claimDailyReward: () => void;
   equipItem: (itemId: string) => void;
@@ -61,6 +62,18 @@ interface GameContextType {
   dungeonRoom: number;
   advanceDungeon: () => void;
   claimDungeonTreasure: () => void;
+
+  // Cooperative actions
+  party: Party | null;
+  incomingInvites: PartyInvite[];
+  createParty: () => Promise<void>;
+  sendPartyInvite: (targetName: string) => Promise<boolean>;
+  acceptPartyInvite: (inviteId: string) => Promise<void>;
+  declinePartyInvite: (inviteId: string) => Promise<void>;
+  leaveParty: () => Promise<void>;
+  togglePartyReady: () => void;
+  startCoopAdventure: () => void;
+  coopFightMonster: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -80,6 +93,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [respawnTimer, setRespawnTimer] = useState<number | null>(null);
   const [dungeonRoom, setDungeonRoom] = useState<number>(0);
   const [quests, setQuests] = useState<Quest[]>([]);
+  const [party, setParty] = useState<Party | null>(null);
+  const [incomingInvites, setIncomingInvites] = useState<PartyInvite[]>([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [marketListings, setMarketListings] = useState<MarketListing[]>([]);
   const [activeEvent, setActiveEvent] = useState<AdventureEvent | null>(null);
@@ -222,6 +237,99 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => clearInterval(timer);
   }, [isOnline]);
+
+  const syncParty = async (partyId: string) => {
+    const supabase = getSupabase();
+    if (!supabase) return;
+    try {
+      const { data: dbParties } = await supabase.from('parties').select('*').eq('id', partyId);
+      if (dbParties && dbParties.length > 0) {
+        const dbParty = dbParties[0];
+        const { data: dbMembers } = await supabase.from('players').select('id, name, class, level, hp, max_hp, party_ready').eq('party_id', partyId);
+        
+        const membersList: PartyMember[] = (dbMembers || []).map(m => ({
+          id: m.id,
+          name: m.name,
+          class: m.class as any,
+          level: m.level,
+          hp: m.hp,
+          max_hp: m.max_hp,
+          ready: m.id === dbParty.leader_id ? true : !!m.party_ready
+        }));
+
+        const nextParty: Party = {
+          id: dbParty.id,
+          leader_id: dbParty.leader_id,
+          leader_name: dbParty.leader_name,
+          status: dbParty.status,
+          members: membersList,
+          current_event: dbParty.current_event
+        };
+
+        setParty(nextParty);
+
+        if (dbParty.current_event && dbParty.status === 'adventuring') {
+          setActiveEvent(dbParty.current_event);
+        } else if (dbParty.status === 'lobby') {
+          setActiveEvent(null);
+        }
+      } else {
+        setParty(null);
+      }
+    } catch (e) {
+      console.warn('Error syncing party details: ', e);
+    }
+  };
+
+  // Co-op Party real-time channel sync
+  useEffect(() => {
+    if (!player || !isOnline) {
+      setParty(null);
+      setIncomingInvites([]);
+      return;
+    }
+
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    supabase.from('party_invites').select('*').eq('receiver_id', player.id).then(({ data }) => {
+      if (data) setIncomingInvites(data);
+    });
+
+    const invitesChannel = supabase.channel(`party_invites_${player.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'party_invites', filter: `receiver_id=eq.${player.id}` }, () => {
+        supabase.from('party_invites').select('*').eq('receiver_id', player.id).then(({ data }) => {
+          if (data) setIncomingInvites(data);
+        });
+      })
+      .subscribe();
+
+    let partyChannel: any = null;
+    let membersChannel: any = null;
+    if (player.party_id) {
+      syncParty(player.party_id);
+      
+      partyChannel = supabase.channel(`party_sync_${player.party_id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'parties', filter: `id=eq.${player.party_id}` }, () => {
+          syncParty(player.party_id!);
+        })
+        .subscribe();
+
+      membersChannel = supabase.channel(`party_members_${player.party_id}`)
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'players', filter: `party_id=eq.${player.party_id}` }, () => {
+          syncParty(player.party_id!);
+        })
+        .subscribe();
+    } else {
+      setParty(null);
+    }
+
+    return () => {
+      supabase.removeChannel(invitesChannel);
+      if (partyChannel) supabase.removeChannel(partyChannel);
+      if (membersChannel) supabase.removeChannel(membersChannel);
+    };
+  }, [player?.party_id, isOnline]);
 
   // Generate simulated market listings
   const generateMockMarket = () => {
@@ -1247,6 +1355,372 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setActiveEvent(null);
   };
 
+  const createParty = async () => {
+    if (!player) return;
+    
+    if (isOnline) {
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          const { data, error } = await supabase.from('parties').insert({
+            leader_id: player.id,
+            leader_name: player.name,
+            status: 'lobby'
+          }).select('*');
+          
+          if (error) throw error;
+          
+          if (data && data.length > 0) {
+            const pId = data[0].id;
+            const updatedPlayer = { ...player, party_id: pId };
+            setPlayer(updatedPlayer);
+            localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+            
+            await supabase.from('players').update({ party_id: pId, party_ready: true }).eq('id', player.id);
+            await syncParty(pId);
+            addLog(`🏰 Created co-op party lobby!`);
+          }
+        } catch (e) {
+          console.warn('Failed creating party lobby online: ', e);
+        }
+      }
+    } else {
+      const mockParty: Party = {
+        id: 'local_party_1',
+        leader_id: player.id,
+        leader_name: player.name,
+        status: 'lobby',
+        members: [
+          { id: player.id, name: player.name, class: player.class, level: player.level, hp: player.hp, max_hp: player.max_hp, ready: true },
+          { id: 'bot_shadow', name: 'ShadowBlade', class: 'Rogue', level: player.level + 1, hp: 100, max_hp: 100, ready: true },
+          { id: 'bot_luna', name: 'LunaSkye', class: 'Mage', level: player.level - 1, hp: 80, max_hp: 80, ready: true }
+        ]
+      };
+      setParty(mockParty);
+      const updatedPlayer = { ...player, party_id: 'local_party_1' };
+      setPlayer(updatedPlayer);
+      localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+      addLog(`🏰 Created local practice party (bots joined!)`);
+    }
+  };
+
+  const sendPartyInvite = async (targetName: string): Promise<boolean> => {
+    if (!player || !party) return false;
+    
+    if (isOnline) {
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          const { data: dbPlayers } = await supabase.from('players').select('id').eq('name', targetName);
+          if (dbPlayers && dbPlayers.length > 0) {
+            const destId = dbPlayers[0].id;
+            const { error } = await supabase.from('party_invites').insert({
+              sender_name: player.name,
+              receiver_id: destId,
+              party_id: party.id
+            });
+            if (error) throw error;
+            addLog(`✉️ Party invitation sent to ${targetName}.`);
+            return true;
+          } else {
+            addLog(`❌ Player "${targetName}" not found.`);
+            return false;
+          }
+        } catch (e) {
+          console.warn('Invite send failed: ', e);
+          return false;
+        }
+      }
+    } else {
+      addLog(`❌ Cannot invite real players offline.`);
+    }
+    return false;
+  };
+
+  const acceptPartyInvite = async (inviteId: string) => {
+    if (!player) return;
+    
+    if (isOnline) {
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          const { data: dbInvites } = await supabase.from('party_invites').select('*').eq('id', inviteId);
+          if (dbInvites && dbInvites.length > 0) {
+            const pId = dbInvites[0].party_id;
+            await supabase.from('party_invites').delete().eq('id', inviteId);
+            
+            const updatedPlayer = { ...player, party_id: pId };
+            setPlayer(updatedPlayer);
+            localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+            
+            await supabase.from('players').update({ party_id: pId, party_ready: false }).eq('id', player.id);
+            await syncParty(pId);
+            addLog(`🤝 Joined the party!`);
+          }
+        } catch (e) {
+          console.warn('Failed joining party invite: ', e);
+        }
+      }
+    }
+  };
+
+  const declinePartyInvite = async (inviteId: string) => {
+    if (isOnline) {
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          await supabase.from('party_invites').delete().eq('id', inviteId);
+          setIncomingInvites(prev => prev.filter(i => i.id !== inviteId));
+        } catch (e) {
+          console.warn('Failed decline party invite: ', e);
+        }
+      }
+    }
+  };
+
+  const leaveParty = async () => {
+    if (!player || !party) return;
+    
+    if (isOnline) {
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          await supabase.from('players').update({ party_id: null, party_ready: false }).eq('id', player.id);
+          if (party.leader_id === player.id) {
+            await supabase.from('parties').delete().eq('id', party.id);
+          }
+          
+          const updatedPlayer = { ...player, party_id: undefined };
+          setPlayer(updatedPlayer);
+          localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+          setParty(null);
+          addLog(`🏃 You left the party.`);
+        } catch (e) {
+          console.warn('Failed leaving party: ', e);
+        }
+      }
+    } else {
+      const updatedPlayer = { ...player, party_id: undefined };
+      setPlayer(updatedPlayer);
+      localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+      setParty(null);
+      addLog(`🏃 You left the local party.`);
+    }
+  };
+
+  const togglePartyReady = async () => {
+    if (!player || !party) return;
+    
+    const nextReady = !player.party_ready;
+    const updatedPlayer = { ...player, party_ready: nextReady };
+    setPlayer(updatedPlayer);
+    localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+    
+    if (isOnline) {
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          await supabase.from('players').update({ party_ready: nextReady }).eq('id', player.id);
+          await syncParty(party.id);
+        } catch (e) {
+          console.warn('Failed toggling ready status: ', e);
+        }
+      }
+    } else {
+      setParty(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          members: prev.members.map(m => m.id === player.id ? { ...m, ready: nextReady } : m)
+        };
+      });
+    }
+  };
+
+  const startCoopAdventure = async () => {
+    if (!player || !party) return;
+    if (party.leader_id !== player.id) {
+      addLog(`❌ Only the party leader (${party.leader_name}) can start the adventure.`);
+      return;
+    }
+    
+    if (player.energy < 1) {
+      addLog('❌ Out of Energy! Drink an Energy Potion or wait for it to regenerate.');
+      return;
+    }
+
+    const updatedPlayer = { ...player, energy: player.energy - 1 };
+    setPlayer(updatedPlayer);
+    localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+    syncPlayerToSupabase(updatedPlayer);
+    
+    const event = generateRandomEvent(player.level);
+    const wovenDescription = generateCoopDescription(
+      event.type,
+      party.members,
+      event.monster?.name
+    );
+    
+    const coopEvent: AdventureEvent & { monster_hp?: number; combat_logs?: string[] } = {
+      ...event,
+      description: wovenDescription,
+      monster_hp: event.monster ? event.monster.hp : undefined,
+      combat_logs: []
+    };
+
+    if (isOnline) {
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          await supabase.from('parties').update({
+            status: 'adventuring',
+            current_event: coopEvent
+          }).eq('id', party.id);
+          await syncParty(party.id);
+        } catch (e) {
+          console.warn('Failed starting co-op adventure: ', e);
+        }
+      }
+    } else {
+      setParty(prev => {
+        if (!prev) return null;
+        return { ...prev, status: 'adventuring', current_event: coopEvent };
+      });
+      setActiveEvent(coopEvent);
+      addLog(`👣 Explored the forest with your party (-1 Energy)...`);
+    }
+  };
+
+  const coopFightMonster = async () => {
+    if (!player || !party || !party.current_event || !party.current_event.monster) return;
+    
+    const monster = party.current_event.monster;
+    let mHP = party.current_event.monster_hp !== undefined ? party.current_event.monster_hp : monster.hp;
+    
+    if (mHP <= 0) return;
+    
+    const weapon = inventory.find(i => i.type === 'Weapon' && i.equipped);
+    const wAtk = weapon?.stats?.attack || 0;
+    const baseDmg = player.strength + wAtk + (player.class === 'Mage' ? 10 : 0);
+    const criticalChance = 0.05 + (player.speed * 0.004) + (player.class === 'Rogue' ? 0.15 : 0);
+    
+    const isCrit = Math.random() < criticalChance;
+    let dmg = Math.round(baseDmg * (0.85 + Math.random() * 0.3));
+    if (isCrit) dmg = Math.round(dmg * 2.0);
+    
+    const nextHP = Math.max(0, mHP - dmg);
+    const actionLog = `🗡️ ${player.name} (${player.class}) struck for ${dmg} damage!${isCrit ? ' (CRIT)' : ''}`;
+    
+    if (isOnline) {
+      const supabase = getSupabase();
+      if (supabase) {
+        try {
+          const nextEvent = {
+            ...party.current_event,
+            monster_hp: nextHP,
+            combat_logs: [...(party.current_event.combat_logs || []), actionLog]
+          };
+
+          if (nextHP <= 0) {
+            nextEvent.title = 'Co-op Victory!';
+            nextEvent.description = `🎉 VICTORY! The monster was slain!\n\n` + nextEvent.combat_logs.join('\n');
+            
+            let updatedPlayer = { ...player };
+            updatedPlayer.gold += monster.goldReward;
+            updatedPlayer = addXP(updatedPlayer, monster.xpReward);
+            updatedPlayer.total_kills = (updatedPlayer.total_kills || 0) + 1;
+            updatedPlayer = checkAchievements(updatedPlayer);
+            
+            setPlayer(updatedPlayer);
+            localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+            syncPlayerToSupabase(updatedPlayer);
+            
+            addLog(`⚔️ Co-op Victory! Defeated ${monster.name}. Received +${monster.goldReward} Gold.`);
+            
+            await supabase.from('parties').update({
+              status: 'lobby',
+              current_event: nextEvent
+            }).eq('id', party.id);
+          } else {
+            await supabase.from('parties').update({ current_event: nextEvent }).eq('id', party.id);
+          }
+          await syncParty(party.id);
+        } catch (e) {
+          console.warn('Error in co-op monster hit: ', e);
+        }
+      }
+    } else {
+      const botHits: string[] = [];
+      let finalHP = nextHP;
+      
+      if (finalHP > 0) {
+        party.members.forEach(m => {
+          if (m.id !== player.id && finalHP > 0) {
+            const bDmg = Math.round(15 + Math.random() * 15);
+            finalHP = Math.max(0, finalHP - bDmg);
+            botHits.push(`🗡️ ${m.name} (${m.class}) struck for ${bDmg} damage!`);
+          }
+        });
+      }
+
+      const nextEvent = {
+        ...party.current_event,
+        monster_hp: finalHP,
+        combat_logs: [...(party.current_event.combat_logs || []), actionLog, ...botHits]
+      };
+
+      if (finalHP <= 0) {
+        nextEvent.title = 'Co-op Victory!';
+        nextEvent.description = `🎉 VICTORY! The monster was slain!\n\n` + nextEvent.combat_logs.join('\n');
+        
+        let updatedPlayer = { ...player };
+        updatedPlayer.gold += monster.goldReward;
+        updatedPlayer = addXP(updatedPlayer, monster.xpReward);
+        updatedPlayer.total_kills = (updatedPlayer.total_kills || 0) + 1;
+        updatedPlayer = checkAchievements(updatedPlayer);
+        
+        setPlayer(updatedPlayer);
+        localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+        addLog(`⚔️ Co-op Victory! Defeated ${monster.name}. Received +${monster.goldReward} Gold.`);
+        
+        setParty(prev => {
+          if (!prev) return null;
+          return { ...prev, status: 'lobby', current_event: nextEvent };
+        });
+        setActiveEvent(nextEvent);
+      } else {
+        const target = party.members[Math.floor(Math.random() * party.members.length)];
+        const mDmg = Math.max(1, Math.round(monster.attack * (0.8 + Math.random() * 0.4)));
+        nextEvent.combat_logs.push(`👹 ${monster.name} attacks ${target.name} for ${mDmg} damage!`);
+        
+        if (target.id === player.id) {
+          const hurtHP = Math.max(0, player.hp - mDmg);
+          const hurtPlayer = { ...player, hp: hurtHP };
+          setPlayer(hurtPlayer);
+          localStorage.setItem('game_player', JSON.stringify(hurtPlayer));
+          
+          if (hurtHP <= 0) {
+            nextEvent.title = 'Co-op Defeat!';
+            nextEvent.description = `💀 DEFEAT! You have fallen in battle!\n\n` + nextEvent.combat_logs.join('\n');
+            setIsDead(true);
+            setParty(prev => {
+              if (!prev) return null;
+              return { ...prev, status: 'lobby', current_event: nextEvent };
+            });
+            setActiveEvent(nextEvent);
+            return;
+          }
+        }
+        
+        setParty(prev => {
+          if (!prev) return null;
+          return { ...prev, current_event: nextEvent };
+        });
+        setActiveEvent(nextEvent);
+      }
+    }
+  };
+
   const interactMerchant = (action: 'buy' | 'sell' | 'ignore', itemToBuy?: Item) => {
     if (!player) return;
     
@@ -1833,7 +2307,17 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       checkAchievements,
       dungeonRoom,
       advanceDungeon,
-      claimDungeonTreasure
+      claimDungeonTreasure,
+      party,
+      incomingInvites,
+      createParty,
+      sendPartyInvite,
+      acceptPartyInvite,
+      declinePartyInvite,
+      leaveParty,
+      togglePartyReady,
+      startCoopAdventure,
+      coopFightMonster
     }}>
       {children}
     </GameContext.Provider>

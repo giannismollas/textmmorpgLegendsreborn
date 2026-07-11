@@ -144,3 +144,43 @@ CREATE POLICY "Allow anyone to browse world_bosses" ON public.world_bosses
 
 CREATE POLICY "Allow anyone to manage world_bosses" ON public.world_bosses
   FOR ALL USING (true);
+
+
+-- Add party reference to players
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS party_id UUID;
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS party_ready BOOLEAN DEFAULT FALSE;
+
+-- Parties Table
+CREATE TABLE IF NOT EXISTS public.parties (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  leader_id UUID REFERENCES public.players(id) ON DELETE CASCADE,
+  leader_name TEXT NOT NULL,
+  status TEXT DEFAULT 'lobby',
+  current_event JSONB,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.parties ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow anyone to browse parties" ON public.parties
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow anyone to manage parties" ON public.parties
+  FOR ALL USING (true);
+
+-- Party Invitations Table
+CREATE TABLE IF NOT EXISTS public.party_invites (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sender_name TEXT NOT NULL,
+  receiver_id UUID REFERENCES public.players(id) ON DELETE CASCADE,
+  party_id UUID REFERENCES public.parties(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.party_invites ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow anyone to browse party_invites" ON public.party_invites
+  FOR SELECT USING (true);
+
+CREATE POLICY "Allow anyone to manage party_invites" ON public.party_invites
+  FOR ALL USING (true);
