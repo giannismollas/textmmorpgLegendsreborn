@@ -71,8 +71,8 @@ export const Dashboard: React.FC = () => {
     const randomStory = ADVENTURE_STORIES[Math.floor(Math.random() * ADVENTURE_STORIES.length)];
     setExploreStory(randomStory);
 
-    const duration = 1400; // 1.4s loading duration
-    const step = 35;
+    const duration = 10000; // 10s loading duration
+    const step = 100;
     const increment = 100 / (duration / step);
     let currentProgress = 0;
 
@@ -84,7 +84,7 @@ export const Dashboard: React.FC = () => {
         setTimeout(() => {
           startAdventure();
           setIsExploring(false);
-        }, 120);
+        }, 150);
       } else {
         setExploreProgress(Math.min(99, Math.round(currentProgress)));
       }
@@ -99,7 +99,12 @@ export const Dashboard: React.FC = () => {
         backgroundSize: 'cover', 
         backgroundPosition: 'center',
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
-        border: '1px solid var(--border-color)'
+        border: '1px solid var(--border-color)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+        padding: '32px 24px'
       }}>
         <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em', display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Compass size={14} color="var(--primary)" />
@@ -113,16 +118,53 @@ export const Dashboard: React.FC = () => {
           Embark on your journey in {currentRegion}. Spend 1 Energy to explore.
         </p>
 
-        <button 
-          className="btn-adventure" 
-          onClick={triggerExplore}
-          disabled={groupDungeonLocked}
-          style={groupDungeonLocked ? { background: '#3b2f63', cursor: 'not-allowed', color: '#8b84a3' } : {}}
-        >
-          {groupDungeonLocked ? '🔒 LOCKED IN GROUP RAID' : 'START ADVENTURE'}
-        </button>
+        {isExploring ? (
+          /* Inline active exploration loader on the same page */
+          <div style={{
+            background: 'rgba(23, 18, 51, 0.85)',
+            border: '1px solid var(--primary)',
+            boxShadow: '0 0 25px rgba(168, 85, 247, 0.2)',
+            padding: '20px',
+            borderRadius: '8px',
+            textAlign: 'center',
+            margin: '16px 0',
+            width: '100%',
+            maxWidth: '520px',
+            animation: 'fadeIn 0.2s ease-out'
+          }}>
+            <h4 style={{ margin: '0 0 8px 0', fontSize: '0.8rem', color: 'var(--text-gold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              👣 You take a step...
+            </h4>
+            <p style={{ fontStyle: 'italic', fontSize: '0.9rem', color: '#fff', margin: '0 0 16px 0', lineHeight: '1.5' }}>
+              "{exploreStory}"
+            </p>
+            
+            {/* 10s Loading Bar */}
+            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '10px', height: '14px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', position: 'relative', width: '100%' }}>
+              <div style={{
+                width: `${exploreProgress}%`,
+                height: '100%',
+                background: 'linear-gradient(90deg, var(--primary) 0%, #a855f7 100%)',
+                transition: 'width 0.1s linear'
+              }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              <span>🏃‍♂️ Running...</span>
+              <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{exploreProgress}%</span>
+            </div>
+          </div>
+        ) : (
+          <button 
+            className="btn-adventure" 
+            onClick={triggerExplore}
+            disabled={groupDungeonLocked}
+            style={groupDungeonLocked ? { background: '#3b2f63', cursor: 'not-allowed', color: '#8b84a3' } : {}}
+          >
+            {groupDungeonLocked ? '🔒 LOCKED IN GROUP RAID' : 'START ADVENTURE'}
+          </button>
+        )}
 
-        <div style={{ display: 'flex', gap: '20px', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+        <div style={{ display: 'flex', gap: '20px', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '16px' }}>
           <span onClick={() => setShowParty(true)} style={{ cursor: 'pointer' }} className="hover-gold">👥 Party</span>
           <span onClick={() => setShowMap(true)} style={{ cursor: 'pointer' }} className="hover-gold">🗺️ Map</span>
           <span onClick={() => setShowDungeons(true)} style={{ cursor: 'pointer' }} className="hover-gold">🏰 Dungeons</span>
@@ -134,56 +176,6 @@ export const Dashboard: React.FC = () => {
       {showMap && <MapPanel onClose={() => setShowMap(false)} />}
       {showDungeons && <DungeonSelectPanel onClose={() => setShowDungeons(false)} />}
       {showBosses && <RegionalBossPanel onClose={() => setShowBosses(false)} />}
-
-      {/* Exploration Loading progress overlay */}
-      {isExploring && (
-        <div className="overlay" style={{ zIndex: 10000, background: 'rgba(0, 0, 0, 0.85)' }}>
-          <div className="modal-content" style={{ 
-            maxWidth: '500px', 
-            background: 'rgba(23, 18, 51, 0.98)', 
-            border: '1px solid var(--primary)', 
-            boxShadow: '0 0 35px rgba(168, 85, 247, 0.3)',
-            padding: '28px',
-            textAlign: 'center',
-            borderRadius: '12px'
-          }}>
-            <h3 style={{ margin: '0 0 12px 0', fontSize: '1.2rem', color: 'var(--text-gold)', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              👣 You take a step...
-            </h3>
-            
-            <p style={{ 
-              fontSize: '0.95rem', 
-              color: '#fff', 
-              lineHeight: '1.6', 
-              minHeight: '60px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              margin: '0 0 24px 0',
-              fontStyle: 'italic'
-            }}>
-              "{exploreStory}"
-            </p>
-
-            {/* Loading Bar */}
-            <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '20px', height: '18px', overflow: 'hidden', position: 'relative', border: '1px solid rgba(255,255,255,0.1)', marginBottom: '8px' }}>
-              <div style={{ 
-                width: `${exploreProgress}%`, 
-                height: '100%', 
-                background: 'linear-gradient(90deg, var(--primary) 0%, #a855f7 100%)', 
-                borderRadius: '20px', 
-                transition: 'width 0.05s linear',
-                boxShadow: '0 0 10px rgba(168, 85, 247, 0.5)'
-              }} />
-            </div>
-
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>🏃‍♂️ Running...</span>
-              <span style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{exploreProgress}%</span>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 2. Middle Row grids (Recent Activity & Daily Rewards) */}
       <div className="dashboard-grid">

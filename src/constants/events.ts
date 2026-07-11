@@ -262,14 +262,14 @@ export const generateRandomEvent = (playerLevel: number, activeRegionName?: stri
   const regionConfig = REGIONS_CONFIG.find(r => r.name === regionName) || REGIONS_CONFIG[0];
 
   // Specific Loot Table Odds:
-  // 5% chance to lose gold
-  // 10% chance to get an item
-  // 20% chance to fight a monster
-  // 40% chance to get materials
-  // 25% chance to trigger an adventure story event (gaining gold & exp safely)
+  // 5% chance to lose gold (Event)
+  // 15% chance to fight a monster (Event)
+  // 10% chance to get an item (Loot)
+  // 20% chance to get materials (Loot)
+  // 50% chance to trigger an adventure story event (Nothing - gaining gold & exp safely)
 
   if (roll < 0.05) {
-    // 5% gold loss
+    // 5% gold loss (Event)
     const goldLost = Math.max(5, Math.round(10 + playerLevel * 1.5 * (0.8 + Math.random() * 0.4)));
     return {
       type: 'Treasure',
@@ -282,22 +282,8 @@ export const generateRandomEvent = (playerLevel: number, activeRegionName?: stri
       }
     };
   } 
-  else if (roll < 0.15) {
-    // 10% item drop
-    const rolledItem = generateRandomItem();
-    return {
-      type: 'Treasure',
-      title: '🎁 Glimmering Cache',
-      description: `You spot a leather sack caught in the branches. Inside, you find a pristine gear piece!`,
-      chestLoot: {
-        gold: 0,
-        item: rolledItem,
-        xp: Math.round(playerLevel * 3 + 10)
-      }
-    };
-  } 
-  else if (roll < 0.35) {
-    // 20% monster fight
+  else if (roll < 0.20) {
+    // 15% monster fight (Event)
     const baseMonster = regionConfig.monsters[Math.floor(Math.random() * regionConfig.monsters.length)];
     const scalingFactor = 1 + (playerLevel - regionConfig.minLevel) * 0.05;
     
@@ -318,8 +304,22 @@ export const generateRandomEvent = (playerLevel: number, activeRegionName?: stri
       monster
     };
   } 
-  else if (roll < 0.75) {
-    // 40% gathering materials
+  else if (roll < 0.30) {
+    // 10% item drop (Loot)
+    const rolledItem = generateRandomItem();
+    return {
+      type: 'Treasure',
+      title: '🎁 Glimmering Cache',
+      description: `You spot a leather sack caught in the branches. Inside, you find a pristine gear piece!`,
+      chestLoot: {
+        gold: 0,
+        item: rolledItem,
+        xp: Math.round(playerLevel * 3 + 10)
+      }
+    };
+  } 
+  else if (roll < 0.50) {
+    // 20% gathering materials (Loot)
     const mat = rollMaterialForRegion(regionConfig.name);
     
     // Auto-map material keyword to relevant skill
@@ -355,7 +355,7 @@ export const generateRandomEvent = (playerLevel: number, activeRegionName?: stri
     };
   } 
   else {
-    // 25% story encounter
+    // 50% story encounter (Nothing)
     const safeXP = Math.round(playerLevel * 4 + 12);
     const safeGold = Math.round(playerLevel * 3 + 10);
     const randomStory = ADVENTURE_STORIES[Math.floor(Math.random() * ADVENTURE_STORIES.length)];

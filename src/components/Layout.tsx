@@ -3,7 +3,7 @@ import { useGame } from '../context/GameContext';
 import { 
   Home, Backpack, Swords, Scroll, Gift, User, Award, 
   Users, Settings, LogOut, Compass, Coins, Gem, Send, 
-  Flame, Globe, Menu, ShieldAlert, Sparkles, MessageSquare, Briefcase, Trophy
+  Flame, Globe, Menu, ShieldAlert, Sparkles, MessageSquare, Briefcase, Trophy, Hammer
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -150,6 +150,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button className={`nav-button ${currentView === 'town' ? 'active' : ''}`} onClick={() => setCurrentView('town')}>
               <Compass size={16} />
               <span className="sidebar-text">Town</span>
+            </button>
+            <button className={`nav-button ${currentView === 'crafting' ? 'active' : ''}`} onClick={() => setCurrentView('crafting')}>
+              <Hammer size={16} />
+              <span className="sidebar-text">Crafting</span>
             </button>
             <button className={`nav-button ${currentView === 'jobs' ? 'active' : ''}`} onClick={() => setCurrentView('jobs')}>
               <Briefcase size={16} />

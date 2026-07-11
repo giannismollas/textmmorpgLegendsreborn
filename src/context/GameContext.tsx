@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   Player, Item, Quest, ChatMessage, MarketListing, 
   AdventureEvent, MonsterData, GatheringNodeData,
-  ItemType, ItemRarity, Party, PartyMember, PartyInvite
+  ItemType, ItemRarity, Party, PartyMember, PartyInvite, PlayerProfessions
 } from '../types';
 import { generateRandomItem, CRAFTING_RECIPES } from '../constants/items';
 import { generateRandomEvent, getRegionForLevel, REGIONS_CONFIG } from '../constants/events';
@@ -19,7 +19,7 @@ interface GameContextType {
   marketListings: MarketListing[];
   activeEvent: AdventureEvent | null;
   adventureLog: string[];
-  currentView: 'home' | 'character' | 'inventory' | 'town' | 'market' | 'guild' | 'settings' | 'jobs' | 'arena' | 'boss' | 'achievements' | 'leaderboard';
+  currentView: 'home' | 'character' | 'inventory' | 'town' | 'market' | 'guild' | 'settings' | 'jobs' | 'arena' | 'boss' | 'achievements' | 'leaderboard' | 'crafting';
   loading: boolean;
   isOnline: boolean;
   supabaseError: string | null;
@@ -29,7 +29,7 @@ interface GameContextType {
   register: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   createCharacter: (name: string, avatar: string, characterClass: 'Warrior' | 'Mage' | 'Rogue' | 'Ranger') => Promise<void>;
-  setCurrentView: (view: 'home' | 'character' | 'inventory' | 'town' | 'market' | 'guild' | 'settings' | 'jobs' | 'arena' | 'boss' | 'achievements' | 'leaderboard') => void;
+  setCurrentView: (view: 'home' | 'character' | 'inventory' | 'town' | 'market' | 'guild' | 'settings' | 'jobs' | 'arena' | 'boss' | 'achievements' | 'leaderboard' | 'crafting') => void;
   startAdventure: () => void;
   fightMonster: () => void;
   gatherMaterials: () => void;
@@ -78,6 +78,7 @@ interface GameContextType {
   claimGroupDungeonRewards: () => void;
   startSoloDungeon: () => void;
   startRegionalBossFight: () => void;
+  grindProfession: (profKey: any, rolledMat?: { name: string; emoji: string }) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -103,7 +104,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [marketListings, setMarketListings] = useState<MarketListing[]>([]);
   const [activeEvent, setActiveEvent] = useState<AdventureEvent | null>(null);
   const [adventureLog, setAdventureLog] = useState<string[]>([]);
-  const [currentView, setCurrentView] = useState<'home' | 'character' | 'inventory' | 'town' | 'market' | 'guild' | 'settings' | 'jobs' | 'arena' | 'boss' | 'achievements' | 'leaderboard'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'character' | 'inventory' | 'town' | 'market' | 'guild' | 'settings' | 'jobs' | 'arena' | 'boss' | 'achievements' | 'leaderboard' | 'crafting'>('home');
   const [loading, setLoading] = useState<boolean>(true);
   const [isOnline, setIsOnline] = useState<boolean>(false);
   const [supabaseError, setSupabaseError] = useState<string | null>(null);
@@ -1149,6 +1150,70 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPlayer(updatedPlayer);
     localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
     addLog(`👹 Challenged ${regionConfig.boss.name} in ${currentRegion} (-1 Energy).`);
+    syncPlayerToSupabase(updatedPlayer);
+  };
+
+  const grindProfession = (profKey: string, rolledMat?: { name: string; emoji: string }) => {
+    if (!player) return;
+
+    const key = profKey as keyof PlayerProfessions;
+    const playerProf = player.professions[key] || { level: 1, xp: 0, max_xp: 100 };
+    let newXp = playerProf.xp + 25; // 25 XP per grind completion
+    let newLevel = playerProf.level;
+    let newMaxXp = playerProf.max_xp;
+    let lvUpText = '';
+
+    while (newXp >= newMaxXp) {
+      newXp -= newMaxXp;
+      newLevel += 1;
+      newMaxXp = newLevel * 100;
+      lvUpText = `📈 Your ${profKey.toUpperCase()} level increased to ${newLevel}!`;
+    }
+
+    const updatedPlayer = {
+      ...player,
+      professions: {
+        ...player.professions,
+        [key]: {
+          level: newLevel,
+          xp: newXp,
+          max_xp: newMaxXp
+        }
+      }
+    };
+
+    setPlayer(updatedPlayer);
+    localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+
+    if (rolledMat) {
+      const rolledItem: Item = {
+        id: Math.random().toString(36).substring(2, 9),
+        name: `${rolledMat.emoji} ${rolledMat.name}`,
+        type: 'Material',
+        rarity: newLevel >= 8 ? 'Rare' : newLevel >= 4 ? 'Uncommon' : 'Common',
+        value: newLevel >= 8 ? 80 : newLevel >= 4 ? 30 : 10,
+        quantity: 1
+      };
+
+      setInventory(prev => {
+        const existing = prev.find(i => i.name === rolledItem.name);
+        let updated;
+        if (existing) {
+          updated = prev.map(i => i.id === existing.id ? { ...i, quantity: (i.quantity || 1) + 1 } : i);
+        } else {
+          updated = [...prev, rolledItem];
+        }
+        localStorage.setItem('game_inventory', JSON.stringify(updated));
+        syncInventoryToSupabase(updated, updatedPlayer.id);
+        return updated;
+      });
+
+      addLog(`⚙️ Grind Complete! Gained +25 ${profKey.toUpperCase()} XP and found 1x ${rolledMat.emoji} ${rolledMat.name}.`);
+    } else {
+      addLog(`⚙️ Grind Complete! Gained +25 ${profKey.toUpperCase()} XP (No resources found this turn).`);
+    }
+
+    if (lvUpText) addLog(lvUpText);
     syncPlayerToSupabase(updatedPlayer);
   };
 
@@ -2502,7 +2567,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       startGroupDungeon,
       claimGroupDungeonRewards,
       startSoloDungeon,
-      startRegionalBossFight
+      startRegionalBossFight,
+      grindProfession
     }}>
       {children}
     </GameContext.Provider>

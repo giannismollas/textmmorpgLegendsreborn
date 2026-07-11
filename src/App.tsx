@@ -17,6 +17,7 @@ import { WorldBoss } from './components/WorldBoss';
 import { DeathOverlay } from './components/DeathOverlay';
 import { Leaderboard } from './components/Leaderboard';
 import { AchievementsPanel } from './components/AchievementsPanel';
+import { Crafting } from './components/Crafting';
 import { Flame } from 'lucide-react';
 
 const GameRouter: React.FC = () => {
@@ -48,6 +49,7 @@ const GameRouter: React.FC = () => {
     <Layout>
       {currentView === 'home' && <Dashboard />}
       {currentView === 'town' && <Town />}
+      {currentView === 'crafting' && <Crafting />}
       {currentView === 'inventory' && <Inventory />}
       {currentView === 'character' && <CharacterPanel />}
       {currentView === 'market' && <Marketplace />}
