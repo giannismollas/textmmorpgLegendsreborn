@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext';
 import { CRAFTING_RECIPES } from '../constants/items';
 import { Compass, ShoppingBag, Flame, Coins, Hammer } from 'lucide-react';
 import { ItemType, ItemRarity } from '../types';
+import { ItemIcon } from './ItemIcon';
 
 export const Town: React.FC = () => {
   const { player, inventory, buyShopItem, craftItem } = useGame();
@@ -96,12 +97,15 @@ export const Town: React.FC = () => {
           <div className="town-grid">
             {shopItems.map((item, idx) => (
               <div key={idx} style={{ background: 'rgba(255, 255, 255, 0.01)', border: '1px solid var(--border-color)', padding: '16px', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div>
-                  <h4 style={{ fontSize: '0.9rem', margin: '0 0 4px 0', color: 'var(--text-main)' }}>{item.name}</h4>
-                  <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 8px 0' }}>{item.desc}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-gold)', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                    <Coins size={12} />
-                    <span>{item.cost} Gold</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <ItemIcon name={item.name} type={item.type} rarity={item.rarity} size={36} />
+                  <div>
+                    <h4 style={{ fontSize: '0.9rem', margin: '0 0 4px 0', color: 'var(--text-main)' }}>{item.name}</h4>
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '0 0 8px 0' }}>{item.desc}</p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-gold)', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                      <Coins size={12} />
+                      <span>{item.cost} Gold</span>
+                    </div>
                   </div>
                 </div>
                 
@@ -134,11 +138,14 @@ export const Town: React.FC = () => {
               return (
                 <div key={idx} className="crafting-recipe-card">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                    <div>
-                      <h4 style={{ fontSize: '0.95rem', margin: 0 }}>{recipe.resultName}</h4>
-                      <span className={`rarity-tag rarity-${recipe.resultRarity}`} style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
-                        {recipe.resultRarity}
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <ItemIcon name={recipe.resultName} type={recipe.resultType} rarity={recipe.resultRarity} size={36} />
+                      <div>
+                        <h4 style={{ fontSize: '0.95rem', margin: 0 }}>{recipe.resultName}</h4>
+                        <span className={`rarity-tag rarity-${recipe.resultRarity}`} style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
+                          {recipe.resultRarity}
+                        </span>
+                      </div>
                     </div>
                     <span style={{ fontSize: '0.75rem', color: meetsLv ? 'var(--accent-green)' : 'var(--accent-red)' }}>
                       Req. BS Lv {recipe.levelRequired}
@@ -150,8 +157,9 @@ export const Town: React.FC = () => {
                       const status = checkHasMaterial(req.name, req.quantity);
                       if (!status.has) canCraft = false;
                       return (
-                        <div key={mIdx} className={`mats-item ${status.has ? 'has' : 'missing'}`}>
-                          <span>{req.name}</span>
+                        <div key={mIdx} className={`mats-item ${status.has ? 'has' : 'missing'}`} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <ItemIcon name={req.name} type="Material" size={16} />
+                          <span style={{ flex: 1 }}>{req.name}</span>
                           <span>{status.count} / {req.quantity}</span>
                         </div>
                       );

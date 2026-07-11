@@ -3,6 +3,7 @@ import { useGame } from '../context/GameContext';
 import { Item, ItemRarity, ItemType } from '../types';
 import { Backpack, Search, Coins, Plus, Sparkles } from 'lucide-react';
 import { RARITIES } from '../constants/items';
+import { ItemIcon } from './ItemIcon';
 
 export const Inventory: React.FC = () => {
   const { 
@@ -124,6 +125,7 @@ export const Inventory: React.FC = () => {
                 {/* Item Column (adds indicators for quantity and equips) */}
                 <td style={{ fontWeight: 600 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <ItemIcon name={item.name} type={item.type} rarity={item.rarity} size={28} />
                     <span>{item.name}</span>
                     {item.quantity && item.quantity > 1 && (
                       <span style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.08)', padding: '2px 6px', borderRadius: '10px', color: 'var(--text-muted)' }}>
