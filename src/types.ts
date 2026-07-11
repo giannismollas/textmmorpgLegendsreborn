@@ -57,6 +57,9 @@ export interface Player {
   professions: PlayerProfessions;
   party_id?: string;
   party_ready?: boolean;
+  active_region?: string;
+  group_dungeon_finish_time?: number;
+  group_dungeon_region?: string;
 }
 
 export interface Quest {

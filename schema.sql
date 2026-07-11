@@ -184,3 +184,8 @@ CREATE POLICY "Allow anyone to browse party_invites" ON public.party_invites
 
 CREATE POLICY "Allow anyone to manage party_invites" ON public.party_invites
   FOR ALL USING (true);
+
+-- Active region and locked group dungeons tracking columns
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS active_region TEXT DEFAULT 'Greenwood Forest';
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS group_dungeon_finish_time BIGINT;
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS group_dungeon_region TEXT;

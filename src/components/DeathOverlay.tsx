@@ -4,27 +4,6 @@ import { Skull, Heart, Coins } from 'lucide-react';
 
 export const DeathOverlay: React.FC = () => {
   const { isDead, respawnNow, player } = useGame();
-  const [countdown, setCountdown] = useState(10);
-
-  useEffect(() => {
-    if (!isDead) {
-      setCountdown(10);
-      return;
-    }
-
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [isDead]);
-
   if (!isDead || !player) return null;
 
   return (
@@ -113,34 +92,19 @@ export const DeathOverlay: React.FC = () => {
         </div>
       </div>
 
-      {/* Countdown */}
-      <div style={{
-        fontSize: '3rem',
-        fontWeight: 900,
-        color: countdown > 0 ? '#64748b' : '#22c55e',
-        margin: '0 0 16px 0',
-        fontFamily: 'monospace'
-      }}>
-        {countdown > 0 ? countdown : '✓'}
-      </div>
-
       <button
         className="btn btn-primary"
         style={{
           padding: '14px 48px',
           fontSize: '1.1rem',
           fontWeight: 'bold',
-          background: countdown > 0
-            ? 'rgba(100, 116, 139, 0.3)'
-            : 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-          borderColor: countdown > 0 ? '#475569' : 'var(--primary)',
-          cursor: countdown > 0 ? 'not-allowed' : 'pointer',
-          opacity: countdown > 0 ? 0.6 : 1
+          background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
+          borderColor: 'var(--primary)',
+          cursor: 'pointer'
         }}
         onClick={respawnNow}
-        disabled={countdown > 0}
       >
-        {countdown > 0 ? `Respawning in ${countdown}s...` : '⚔️ Return to Town'}
+        ⚔️ Return to Town
       </button>
     </div>
   );

@@ -7,8 +7,29 @@ import { ItemType, ItemRarity } from '../types';
 export const Town: React.FC = () => {
   const { player, inventory, buyShopItem, craftItem } = useGame();
   const [activeTab, setActiveTab] = useState<'shop' | 'craft'>('shop');
-
   if (!player) return null;
+
+  const currentRegion = player.active_region || 'Greenwood Forest';
+
+  const townNames: Record<string, string> = {
+    'Greenwood Forest': 'Oakvale Village',
+    'Whispering Caves': 'Underforge Cavern',
+    'Sunken Reefs': 'Coral Cove',
+    'Scorched Wastes': 'Obsidian Outpost',
+    'Dragon Peaks': 'Wyvern Nest Outpost',
+    'Void Citadel': 'Eternity Sanctuary',
+  };
+  const townBgKeys: Record<string, string> = {
+    'Greenwood Forest': 'greenwood',
+    'Whispering Caves': 'whispering_caves',
+    'Sunken Reefs': 'sunken_reefs',
+    'Scorched Wastes': 'scorched_wastes',
+    'Dragon Peaks': 'dragon_peaks',
+    'Void Citadel': 'void_citadel',
+  };
+
+  const townName = townNames[currentRegion] || 'Oakvale Village';
+  const townBgKey = townBgKeys[currentRegion] || 'greenwood';
 
   // Shop items list
   const shopItems: { name: string; cost: number; type: ItemType; rarity: ItemRarity; desc: string }[] = [
@@ -25,31 +46,46 @@ export const Town: React.FC = () => {
   };
 
   return (
-    <div className="card">
-      <h3 className="card-title">
-        <Compass size={16} color="var(--primary)" />
-        <span>Town Center</span>
-      </h3>
-
-      {/* Tabs */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '24px', gap: '8px' }}>
-        <button 
-          className={`nav-button ${activeTab === 'shop' ? 'active' : ''}`}
-          onClick={() => setActiveTab('shop')}
-          style={{ width: 'auto', marginBottom: 0, borderRadius: '6px 6px 0 0' }}
-        >
-          <ShoppingBag size={14} />
-          <span>Alchemist Shop</span>
-        </button>
-        <button 
-          className={`nav-button ${activeTab === 'craft' ? 'active' : ''}`}
-          onClick={() => setActiveTab('craft')}
-          style={{ width: 'auto', marginBottom: 0, borderRadius: '6px 6px 0 0' }}
-        >
-          <Hammer size={14} />
-          <span>Blacksmith Forge</span>
-        </button>
+    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{
+        backgroundImage: `linear-gradient(rgba(13, 8, 27, 0.6), rgba(13, 8, 27, 0.9)), url("/images/town_${townBgKey}.png")`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        padding: '24px',
+        borderBottom: '1px solid var(--border-color)',
+        minHeight: '120px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'flex-end'
+      }}>
+        <div style={{ color: 'var(--text-gold)', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          🏘️ ACTIVE SETTLEMENT
+        </div>
+        <h2 style={{ margin: '4px 0 0 0', fontWeight: 'bold', fontSize: '1.5rem', color: '#fff', textShadow: '0 2px 4px rgba(0,0,0,0.8)' }}>
+          {townName}
+        </h2>
       </div>
+
+      <div style={{ padding: '20px' }}>
+        {/* Tabs */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '24px', gap: '8px' }}>
+          <button 
+            className={`nav-button ${activeTab === 'shop' ? 'active' : ''}`}
+            onClick={() => setActiveTab('shop')}
+            style={{ width: 'auto', marginBottom: 0, borderRadius: '6px 6px 0 0' }}
+          >
+            <ShoppingBag size={14} />
+            <span>Alchemist Shop</span>
+          </button>
+          <button 
+            className={`nav-button ${activeTab === 'craft' ? 'active' : ''}`}
+            onClick={() => setActiveTab('craft')}
+            style={{ width: 'auto', marginBottom: 0, borderRadius: '6px 6px 0 0' }}
+          >
+            <Hammer size={14} />
+            <span>Blacksmith Forge</span>
+          </button>
+        </div>
 
       {activeTab === 'shop' && (
         <div>
@@ -136,6 +172,7 @@ export const Town: React.FC = () => {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };

@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useGame } from '../context/GameContext';
-import { getRegionForLevel } from '../constants/events';
+import { getRegionForLevel, REGIONS_CONFIG } from '../constants/events';
 import { 
   Compass, Flame, ShieldAlert, Award, Calendar, 
   Hammer, Scissors, Eye, AlertCircle, Sparkles, Check, Scroll
 } from 'lucide-react';
 import { PartyPanel } from './PartyPanel';
+import { MapPanel } from './MapPanel';
+import { DungeonSelectPanel } from './DungeonSelectPanel';
+import { RegionalBossPanel } from './RegionalBossPanel';
 
 export const Dashboard: React.FC = () => {
   const { 
@@ -14,10 +17,13 @@ export const Dashboard: React.FC = () => {
   } = useGame();
 
   const [showParty, setShowParty] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+  const [showDungeons, setShowDungeons] = useState(false);
+  const [showBosses, setShowBosses] = useState(false);
 
   if (!player) return null;
 
-  const currentRegion = getRegionForLevel(player.level);
+  const currentRegion = player.active_region || getRegionForLevel(player.level);
 
   // Dynamic daily rewards based on player streak data
   const streakDay = player.daily_streak || 0;
@@ -36,12 +42,14 @@ export const Dashboard: React.FC = () => {
 
   const regionImages: Record<string, string> = {
     'Greenwood Forest': '/images/region_greenwood.png',
-    'Whispering Caves': '/images/region_greenwood.png',
-    'Cursed Graveyard': '/images/region_greenwood.png',
-    'Dragon peaks': '/images/region_greenwood.png',
-    'Void Citadel': '/images/region_greenwood.png',
+    'Whispering Caves': '/images/region_whispering_caves.png',
+    'Sunken Reefs': '/images/region_sunken_reefs.png',
+    'Scorched Wastes': '/images/region_scorched_wastes.png',
+    'Dragon Peaks': '/images/region_dragon_peaks.png',
+    'Void Citadel': '/images/region_void_citadel.png',
   };
   const regionBg = regionImages[currentRegion] || '/images/region_greenwood.png';
+  const groupDungeonLocked = player.group_dungeon_finish_time ? Date.now() < player.group_dungeon_finish_time : false;
 
   return (
     <>
@@ -62,22 +70,30 @@ export const Dashboard: React.FC = () => {
           THE WORLD AWAITS
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0 0 16px 0' }}>
-          Embark on your journey, brave warrior. Spend 1 Energy to explore.
+          Embark on your journey in {currentRegion}. Spend 1 Energy to explore.
         </p>
 
-        <button className="btn-adventure" onClick={startAdventure}>
-          START ADVENTURE
+        <button 
+          className="btn-adventure" 
+          onClick={startAdventure}
+          disabled={groupDungeonLocked}
+          style={groupDungeonLocked ? { background: '#3b2f63', cursor: 'not-allowed', color: '#8b84a3' } : {}}
+        >
+          {groupDungeonLocked ? '🔒 LOCKED IN GROUP RAID' : 'START ADVENTURE'}
         </button>
 
         <div style={{ display: 'flex', gap: '20px', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>
-          <span>🏃‍♂️ Sprint</span>
           <span onClick={() => setShowParty(true)} style={{ cursor: 'pointer' }} className="hover-gold">👥 Party</span>
-          <span>🏰 Dungeons</span>
-          <span>👹 Bosses</span>
+          <span onClick={() => setShowMap(true)} style={{ cursor: 'pointer' }} className="hover-gold">🗺️ Map</span>
+          <span onClick={() => setShowDungeons(true)} style={{ cursor: 'pointer' }} className="hover-gold">🏰 Dungeons</span>
+          <span onClick={() => setShowBosses(true)} style={{ cursor: 'pointer' }} className="hover-gold">👹 Bosses</span>
         </div>
       </section>
 
       {showParty && <PartyPanel onClose={() => setShowParty(false)} />}
+      {showMap && <MapPanel onClose={() => setShowMap(false)} />}
+      {showDungeons && <DungeonSelectPanel onClose={() => setShowDungeons(false)} />}
+      {showBosses && <RegionalBossPanel onClose={() => setShowBosses(false)} />}
 
       {/* 2. Middle Row grids (Recent Activity & Daily Rewards) */}
       <div className="dashboard-grid">

@@ -5,7 +5,7 @@ import {
   ItemType, ItemRarity, Party, PartyMember, PartyInvite
 } from '../types';
 import { generateRandomItem, CRAFTING_RECIPES } from '../constants/items';
-import { generateRandomEvent } from '../constants/events';
+import { generateRandomEvent, getRegionForLevel, REGIONS_CONFIG } from '../constants/events';
 import { getSupabase, isSupabaseConfigured, saveCredentials } from '../supabase';
 import { JOBS_DATABASE } from '../constants/jobs';
 import { generateCoopDescription } from '../utils/narrative';
@@ -74,6 +74,10 @@ interface GameContextType {
   togglePartyReady: () => void;
   startCoopAdventure: () => void;
   coopFightMonster: () => void;
+  startGroupDungeon: () => Promise<void>;
+  claimGroupDungeonRewards: () => void;
+  startSoloDungeon: () => void;
+  startRegionalBossFight: () => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -953,6 +957,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addLog('❌ You are currently working a job! Finish or cancel it first.');
       return;
     }
+
+    if (player.group_dungeon_finish_time && Date.now() < player.group_dungeon_finish_time) {
+      const remainingMs = player.group_dungeon_finish_time - Date.now();
+      const hours = Math.floor(remainingMs / 3600000);
+      const minutes = Math.floor((remainingMs % 3600000) / 60000);
+      addLog(`❌ You are locked inside the Group Dungeon! Complete in ${hours}h ${minutes}m.`);
+      return;
+    }
     
     if (player.energy < 1) {
       addLog('❌ Out of Energy! Drink an Energy Potion or wait for it to regenerate.');
@@ -966,7 +978,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     // Roll Event
-    const event = generateRandomEvent(player.level);
+    const event = generateRandomEvent(player.level, player.active_region);
     if (event.type === 'Dungeon') {
       setDungeonRoom(1);
     } else {
@@ -977,7 +989,154 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPlayer(updatedPlayer);
     localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
     
-    addLog(`👣 Explored the forest (-1 Energy)...`);
+    const activeRegion = player.active_region || 'Greenwood Forest';
+    addLog(`👣 Explored ${activeRegion} (-1 Energy)...`);
+    syncPlayerToSupabase(updatedPlayer);
+  };
+
+  const startGroupDungeon = async () => {
+    if (!player) return;
+    
+    if (player.group_dungeon_finish_time && Date.now() < player.group_dungeon_finish_time) {
+      addLog('❌ You are already participating in a Group Dungeon raid!');
+      return;
+    }
+    
+    if (player.energy < 2) {
+      addLog('❌ Insufficient Energy to join a Group Raid Dungeon! (Requires 2 Energy)');
+      return;
+    }
+
+    const currentRegion = player.active_region || getRegionForLevel(player.level);
+    const finishTime = Date.now() + 3 * 3600 * 1000; // 3 hours
+
+    const updatedPlayer = {
+      ...player,
+      energy: player.energy - 2,
+      group_dungeon_finish_time: finishTime,
+      group_dungeon_region: currentRegion
+    };
+
+    setPlayer(updatedPlayer);
+    localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+    addLog(`🏰 You entered the Group Dungeon raid: ${currentRegion}! Exploring will be locked for 3 hours.`);
+    syncPlayerToSupabase(updatedPlayer);
+  };
+
+  const claimGroupDungeonRewards = () => {
+    if (!player || !player.group_dungeon_finish_time) return;
+    if (Date.now() < player.group_dungeon_finish_time) {
+      addLog('❌ Dungeon raid is not finished yet.');
+      return;
+    }
+
+    const region = player.group_dungeon_region || 'Greenwood Forest';
+    const conf = REGIONS_CONFIG.find(r => r.name === region) || REGIONS_CONFIG[0];
+    
+    const goldEarned = Math.round(conf.boss.goldReward * 1.5);
+    const xpEarned = Math.round(conf.boss.xpReward * 1.5);
+
+    let updatedPlayer: Player = {
+      ...player,
+      gold: player.gold + goldEarned
+    };
+    delete updatedPlayer.group_dungeon_finish_time;
+    delete updatedPlayer.group_dungeon_region;
+    updatedPlayer = addXP(updatedPlayer, xpEarned);
+
+    const loot = generateRandomItem(player.level >= 50 ? 'Legendary' : 'Epic');
+    setInventory(prev => {
+      const updated = [...prev, loot];
+      localStorage.setItem('game_inventory', JSON.stringify(updated));
+      syncInventoryToSupabase(updated, updatedPlayer.id);
+      return updated;
+    });
+
+    setPlayer(updatedPlayer);
+    localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+    addLog(`🎉 Completed Group Dungeon! Received +${goldEarned} Gold, +${xpEarned} XP, and 1x ${loot.name} (${loot.rarity})!`);
+    syncPlayerToSupabase(updatedPlayer);
+  };
+
+  const startSoloDungeon = () => {
+    if (!player) return;
+    
+    if (player.group_dungeon_finish_time && Date.now() < player.group_dungeon_finish_time) {
+      addLog('❌ You are currently locked in a Group Dungeon raid!');
+      return;
+    }
+    
+    if (player.energy < 1) {
+      addLog('❌ Out of Energy! Drink an Energy Potion or wait for it to regenerate.');
+      return;
+    }
+
+    const currentRegion = player.active_region || getRegionForLevel(player.level);
+    const regionConfig = REGIONS_CONFIG.find(r => r.name === currentRegion) || REGIONS_CONFIG[0];
+    
+    const scalingFactor = 1 + (player.level - regionConfig.minLevel) * 0.12;
+    const monster: MonsterData = {
+      name: 'Dungeon Sentinel',
+      hp: Math.round(70 * scalingFactor),
+      max_hp: Math.round(70 * scalingFactor),
+      attack: Math.round(10 * scalingFactor),
+      xpReward: Math.round(40 * scalingFactor),
+      goldReward: Math.round(35 * scalingFactor),
+      lootChance: 0.6
+    };
+
+    const event: AdventureEvent = {
+      type: 'Dungeon',
+      title: 'Solo Dungeon Gauntlet',
+      description: `You entered the Solo Dungeon in ${currentRegion}. Room 1 sentinel stands before you!`,
+      monster
+    };
+
+    const updatedPlayer = {
+      ...player,
+      energy: player.energy - 1
+    };
+
+    setDungeonRoom(1);
+    setActiveEvent(event);
+    setPlayer(updatedPlayer);
+    localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+    addLog(`🏰 Entered Solo Dungeon Gauntlet in ${currentRegion} (-1 Energy).`);
+    syncPlayerToSupabase(updatedPlayer);
+  };
+
+  const startRegionalBossFight = () => {
+    if (!player) return;
+    
+    if (player.group_dungeon_finish_time && Date.now() < player.group_dungeon_finish_time) {
+      addLog('❌ You are currently locked in a Group Dungeon raid!');
+      return;
+    }
+    
+    if (player.energy < 1) {
+      addLog('❌ Out of Energy! Drink an Energy Potion or wait for it to regenerate.');
+      return;
+    }
+
+    const currentRegion = player.active_region || getRegionForLevel(player.level);
+    const regionConfig = REGIONS_CONFIG.find(r => r.name === currentRegion) || REGIONS_CONFIG[0];
+    
+    const event: AdventureEvent = {
+      type: 'Boss',
+      title: `BOSS BATTLE: ${regionConfig.boss.name}!`,
+      description: `The ground trembles as you challenge ${regionConfig.boss.name}, the sentinel of ${currentRegion}!`,
+      monster: regionConfig.boss
+    };
+
+    const updatedPlayer = {
+      ...player,
+      energy: player.energy - 1
+    };
+
+    setActiveEvent(event);
+    setPlayer(updatedPlayer);
+    localStorage.setItem('game_player', JSON.stringify(updatedPlayer));
+    addLog(`👹 Challenged ${regionConfig.boss.name} in ${currentRegion} (-1 Energy).`);
     syncPlayerToSupabase(updatedPlayer);
   };
 
@@ -2317,7 +2476,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       leaveParty,
       togglePartyReady,
       startCoopAdventure,
-      coopFightMonster
+      coopFightMonster,
+      startGroupDungeon,
+      claimGroupDungeonRewards,
+      startSoloDungeon,
+      startRegionalBossFight
     }}>
       {children}
     </GameContext.Provider>
