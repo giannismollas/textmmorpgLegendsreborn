@@ -25,6 +25,9 @@ export interface PlayerProfessions {
   blacksmithing: { level: number; xp: number; max_xp: number };
   herbalism: { level: number; xp: number; max_xp: number };
   fishing: { level: number; xp: number; max_xp: number };
+  woodcutting: { level: number; xp: number; max_xp: number };
+  skinning: { level: number; xp: number; max_xp: number };
+  foraging: { level: number; xp: number; max_xp: number };
 }
 
 export interface Player {
@@ -117,7 +120,7 @@ export interface MonsterData {
 
 export interface GatheringNodeData {
   name: string;
-  profession: 'mining' | 'herbalism' | 'fishing';
+  profession: 'mining' | 'herbalism' | 'fishing' | 'skinning' | 'foraging' | 'woodcutting';
   requiredLevel: number;
   xpReward: number;
   materialName: string;
@@ -143,6 +146,7 @@ export interface AdventureEvent {
   chestLoot?: {
     gold: number;
     item?: Item;
+    xp?: number;
   };
 }
 

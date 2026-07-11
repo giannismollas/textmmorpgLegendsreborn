@@ -144,21 +144,160 @@ export const getRegionForLevel = (level: number): string => {
   return conf ? conf.name : REGIONS_CONFIG[REGIONS_CONFIG.length - 1].name;
 };
 
+export const MATERIALS_BY_RARITY: Record<string, Array<{ name: string; emoji: string }>> = {
+  Common: [
+    { name: 'Wood Log', emoji: '🪵' }, { name: 'Stone', emoji: '🪨' },
+    { name: 'Iron Ore', emoji: '🔩' }, { name: 'Copper Ore', emoji: '🪙' },
+    { name: 'Coal', emoji: '⬛' }, { name: 'Plant Fiber', emoji: '🌾' },
+    { name: 'Leather Scraps', emoji: '🏷️' }, { name: 'Animal Hide', emoji: '🐏' },
+    { name: 'Bones', emoji: '🦴' }, { name: 'Feathers', emoji: '🪶' },
+    { name: 'Mushrooms', emoji: '🍄' }, { name: 'Herbs', emoji: '🌿' },
+    { name: 'Flowers', emoji: '🌸' }, { name: 'Clay', emoji: '🏺' },
+    { name: 'Sand', emoji: '🏜️' }, { name: 'Water Flask', emoji: '🧪' },
+    { name: 'Salt', emoji: '🧂' }, { name: 'Wheat', emoji: '🌾' },
+    { name: 'Wool', emoji: '🧶' }, { name: 'Raw Meat', emoji: '🥩' }
+  ],
+  Uncommon: [
+    { name: 'Silver Ore', emoji: '🥈' }, { name: 'Gold Ore', emoji: '🥇' },
+    { name: 'Steel Ingot', emoji: '🧱' }, { name: 'Oak Wood', emoji: '🪵' },
+    { name: 'Maple Wood', emoji: '🪵' }, { name: 'Silk Thread', emoji: '🧵' },
+    { name: 'Spider Silk', emoji: '🕸️' }, { name: 'Crystal Shard', emoji: '🔮' },
+    { name: 'Quartz', emoji: '💎' }, { name: 'Wolf Fur', emoji: '🐺' },
+    { name: 'Bear Hide', emoji: '🐻' }, { name: 'Venom Sac', emoji: '🧪' },
+    { name: 'Bat Wing', emoji: '🦇' }, { name: 'Pearl', emoji: '🦪' },
+    { name: 'Coral', emoji: '🪸' }, { name: 'Obsidian', emoji: '🪨' }
+  ],
+  Rare: [
+    { name: 'Mythril Ore', emoji: '🪙' }, { name: 'Sapphire', emoji: '🔷' },
+    { name: 'Ruby', emoji: '🔻' }, { name: 'Emerald', emoji: '💚' },
+    { name: 'Topaz', emoji: '💛' }, { name: 'Moonstone', emoji: '🌙' },
+    { name: 'Sun Crystal', emoji: '☀️' }, { name: 'Ancient Bark', emoji: '🪵' },
+    { name: 'Dragon Bone', emoji: '🦴' }, { name: 'Dragon Scale', emoji: '🛡️' },
+    { name: 'Phoenix Feather', emoji: '🪶' }, { name: 'Griffin Feather', emoji: '🪶' },
+    { name: 'Frost Core', emoji: '❄️' }, { name: 'Flame Core', emoji: '🔥' },
+    { name: 'Storm Essence', emoji: '⚡' }
+  ],
+  Epic: [
+    { name: 'Adamantite Ore', emoji: '🧱' }, { name: 'Void Crystal', emoji: '🔮' },
+    { name: 'Spirit Essence', emoji: '✨' }, { name: 'Titan Steel', emoji: '🛡️' },
+    { name: 'Ancient Relic', emoji: '🏺' }, { name: 'Leviathan Scale', emoji: '🐠' },
+    { name: 'Hydra Blood', emoji: '🧪' }, { name: 'Giant Heart', emoji: '❤️' },
+    { name: 'Celestial Thread', emoji: '🧵' }, { name: 'Arcane Dust', emoji: '✨' }
+  ],
+  Legendary: [
+    { name: 'Phoenix Ash', emoji: '🌪️' }, { name: 'Divine Crystal', emoji: '💎' },
+    { name: 'Dragon Heart', emoji: '🌋' }, { name: 'World Tree Branch', emoji: '🌿' },
+    { name: 'Eternal Ice', emoji: '❄️' }, { name: 'Infernal Ember', emoji: '🔥' },
+    { name: 'Kraken Ink', emoji: '🦑' }, { name: 'Soul Fragment', emoji: '👻' },
+    { name: 'Celestial Ore', emoji: '🧱' }, { name: 'Ancient Rune', emoji: '📜' }
+  ],
+  Mythic: [
+    { name: 'Time Fragment', emoji: '⏳' }, { name: 'Chaos Core', emoji: '🌀' },
+    { name: 'Void Heart', emoji: '🖤' }, { name: 'Astral Crystal', emoji: '🌌' },
+    { name: 'Fallen Star', emoji: '🌠' }, { name: 'Eclipse Stone', emoji: '🌑' },
+    { name: 'Godsteel Ingot', emoji: '🪙' }, { name: 'Titan Bone', emoji: '🦴' }
+  ],
+  Divine: [
+    { name: 'Heart of Creation', emoji: '💖' }, { name: 'Essence of Life', emoji: '🌱' },
+    { name: 'Celestial Flame', emoji: '💥' }, { name: 'Divine Soul', emoji: '😇' },
+    { name: 'Eternity Crystal', emoji: '⏳' }, { name: 'Cosmic Core', emoji: '🪐' },
+    { name: 'World Seed', emoji: '🌰' }, { name: 'Genesis Stone', emoji: '☄️' }
+  ],
+  Gem: [
+    { name: 'Ruby', emoji: '🔴' }, { name: 'Sapphire', emoji: '🔵' },
+    { name: 'Emerald', emoji: '🟢' }, { name: 'Diamond', emoji: '💎' },
+    { name: 'Amethyst', emoji: '🟣' }, { name: 'Topaz', emoji: '🟡' },
+    { name: 'Opal', emoji: '⚪' }, { name: 'Moonstone', emoji: '🔵' },
+    { name: 'Onyx', emoji: '⚫' }, { name: 'Aquamarine', emoji: '🌐' }
+  ],
+  Alchemy: [
+    { name: 'Healing Herb', emoji: '🌿' }, { name: 'Mana Herb', emoji: '🌿' },
+    { name: 'Nightshade', emoji: '🪻' }, { name: 'Blood Moss', emoji: '🪹' },
+    { name: 'Frost Bloom', emoji: '❄️' }, { name: 'Fire Blossom', emoji: '🔥' },
+    { name: 'Golden Lotus', emoji: '🪷' }, { name: 'Poison Ivy', emoji: '☘️' },
+    { name: 'Crystal Mushroom', emoji: '🍄' }, { name: 'Glowcap Mushroom', emoji: '🍄' },
+    { name: 'Honeycomb', emoji: '🐝' }, { name: 'Bee Wax', emoji: '🍯' },
+    { name: 'Slime Gel', emoji: '🟢' }, { name: 'Magic Dust', emoji: '✨' },
+    { name: 'Fairy Dust', emoji: '✨' }
+  ],
+  Boss: [
+    { name: "Goblin King's Crown", emoji: '👑' }, { name: 'Forest Guardian Bark', emoji: '🪵' },
+    { name: 'Ancient Golem Core', emoji: '🪨' }, { name: 'Ice Dragon Scale', emoji: '❄️' },
+    { name: 'Fire Dragon Heart', emoji: '❤️' }, { name: 'Sea Serpent Fang', emoji: '🦷' },
+    { name: 'Demon Lord Horn', emoji: '😈' }, { name: 'Shadow Lord Cloak', emoji: '🧥' },
+    { name: 'Phoenix Core', emoji: '🔴' }, { name: 'Titan Hammer Fragment', emoji: '🔨' },
+    { name: 'Kraken Tentacle', emoji: '🦑' }, { name: 'Lich King\'s Phylactery', emoji: '💀' }
+  ]
+};
+
+const rollMaterialForRegion = (region: string): { name: string; emoji: string } => {
+  const r = Math.random();
+  let rarityList: string[] = ['Common'];
+
+  if (region === 'Greenwood Forest') {
+    rarityList = r < 0.85 ? ['Common'] : r < 0.95 ? ['Alchemy'] : ['Uncommon'];
+  } else if (region === 'Whispering Caves') {
+    rarityList = r < 0.60 ? ['Common'] : r < 0.85 ? ['Uncommon'] : r < 0.95 ? ['Alchemy'] : ['Gem'];
+  } else if (region === 'Sunken Reefs') {
+    rarityList = r < 0.35 ? ['Common'] : r < 0.70 ? ['Uncommon'] : r < 0.88 ? ['Rare'] : r < 0.95 ? ['Gem'] : ['Epic'];
+  } else if (region === 'Scorched Wastes') {
+    rarityList = r < 0.40 ? ['Uncommon'] : r < 0.80 ? ['Rare'] : r < 0.92 ? ['Epic'] : ['Legendary'];
+  } else if (region === 'Dragon Peaks') {
+    rarityList = r < 0.35 ? ['Rare'] : r < 0.70 ? ['Epic'] : r < 0.88 ? ['Legendary'] : r < 0.96 ? ['Mythic'] : ['Divine'];
+  } else { // Void Citadel
+    rarityList = r < 0.30 ? ['Epic'] : r < 0.65 ? ['Legendary'] : r < 0.85 ? ['Mythic'] : ['Divine'];
+  }
+
+  const chosenKey = rarityList[Math.floor(Math.random() * rarityList.length)];
+  const pool = MATERIALS_BY_RARITY[chosenKey] || MATERIALS_BY_RARITY.Common;
+  return pool[Math.floor(Math.random() * pool.length)];
+};
+
+
+import { ADVENTURE_STORIES } from './adventureStories';
+
 export const generateRandomEvent = (playerLevel: number, activeRegionName?: string): AdventureEvent => {
   const roll = Math.random();
   const regionName = activeRegionName || getRegionForLevel(playerLevel);
   const regionConfig = REGIONS_CONFIG.find(r => r.name === regionName) || REGIONS_CONFIG[0];
 
-  // Weightings:
-  // Monster Fight: 42%
-  // Gathering: 18%
-  // Treasure: 15%
-  // Nothing: 10%
-  // Merchant: 10%
-  // NPC Quest: 5%
-  
-  if (roll < 0.42) {
-    // Monster Event
+  // Specific Loot Table Odds:
+  // 5% chance to lose gold
+  // 10% chance to get an item
+  // 20% chance to fight a monster
+  // 40% chance to get materials
+  // 25% chance to trigger an adventure story event (gaining gold & exp safely)
+
+  if (roll < 0.05) {
+    // 5% gold loss
+    const goldLost = Math.max(5, Math.round(10 + playerLevel * 1.5 * (0.8 + Math.random() * 0.4)));
+    return {
+      type: 'Treasure',
+      title: '💸 Pickpocketed!',
+      description: `A stealthy bandit pickpockets you in the crowd, stealing ${goldLost} Gold before disappearing into the brush!`,
+      chestLoot: {
+        gold: -goldLost,
+        item: undefined,
+        xp: 0
+      }
+    };
+  } 
+  else if (roll < 0.15) {
+    // 10% item drop
+    const rolledItem = generateRandomItem();
+    return {
+      type: 'Treasure',
+      title: '🎁 Glimmering Cache',
+      description: `You spot a leather sack caught in the branches. Inside, you find a pristine gear piece!`,
+      chestLoot: {
+        gold: 0,
+        item: rolledItem,
+        xp: Math.round(playerLevel * 3 + 10)
+      }
+    };
+  } 
+  else if (roll < 0.35) {
+    // 20% monster fight
     const baseMonster = regionConfig.monsters[Math.floor(Math.random() * regionConfig.monsters.length)];
     const scalingFactor = 1 + (playerLevel - regionConfig.minLevel) * 0.05;
     
@@ -179,90 +318,57 @@ export const generateRandomEvent = (playerLevel: number, activeRegionName?: stri
       monster
     };
   } 
-  else if (roll < 0.60) {
-    // Gathering Event
-    const nodes = GATHERING_NODES.filter(n => {
-      if (regionConfig.name === 'Greenwood Forest') return n.requiredLevel <= 2;
-      if (regionConfig.name === 'Whispering Caves') return n.requiredLevel <= 3;
-      return true;
-    });
-    const node = nodes[Math.floor(Math.random() * nodes.length)] || GATHERING_NODES[0];
+  else if (roll < 0.75) {
+    // 40% gathering materials
+    const mat = rollMaterialForRegion(regionConfig.name);
+    
+    // Auto-map material keyword to relevant skill
+    const skills = ['mining', 'woodcutting', 'herbalism', 'skinning', 'fishing', 'foraging'];
+    let skill = 'foraging';
+    const n = mat.name.toLowerCase();
+    
+    if (n.includes('ore') || n.includes('coal') || n.includes('crystal') || n.includes('stone') || n.includes('obsidian') || n.includes('ingot') || n.includes('seam') || n.includes('shard') || n.includes('quartz')) {
+      skill = 'mining';
+    } else if (n.includes('log') || n.includes('wood') || n.includes('bark') || n.includes('branch')) {
+      skill = 'woodcutting';
+    } else if (n.includes('herb') || n.includes('flower') || n.includes('bloom') || n.includes('lotus') || n.includes('nightshade') || n.includes('mushroom') || n.includes('glowcap') || n.includes('dust') || n.includes('gel') || n.includes('slime')) {
+      skill = 'herbalism';
+    } else if (n.includes('hide') || n.includes('fur') || n.includes('leather') || n.includes('bone') || n.includes('scraps') || n.includes('fang') || n.includes('tooth')) {
+      skill = 'skinning';
+    } else if (n.includes('pearl') || n.includes('coral') || n.includes('fish') || n.includes('scale') || n.includes('tentacle') || n.includes('ink') || n.includes('sea')) {
+      skill = 'fishing';
+    }
+
+    const node: GatheringNodeData = {
+      name: `${mat.emoji} ${mat.name}`,
+      profession: skill as any,
+      requiredLevel: Math.max(1, Math.floor(regionConfig.minLevel / 12)),
+      xpReward: Math.round(15 + regionConfig.minLevel * 0.4),
+      materialName: `${mat.emoji} ${mat.name}`
+    };
+
     return {
       type: 'Gathering',
-      title: `${node.name} Discovered`,
-      description: `You spot a rich ${node.name} ripe for harvesting.`,
+      title: `Resource Located`,
+      description: `You spot a prime node of ${mat.emoji} ${mat.name} that can be harvested.`,
       gathering: node
     };
   } 
-  else if (roll < 0.75) {
-    // Treasure Chest
-    const goldFound = Math.round(50 + playerLevel * 15 * (0.8 + Math.random() * 0.4));
-    const itemsRoll = Math.random();
-    let lootItem: Item | undefined;
-    
-    if (itemsRoll < 0.4) {
-      lootItem = generateRandomItem();
-    }
-
-    return {
-      type: 'Treasure',
-      title: 'Hidden Chest Found',
-      description: `You discover a dust-covered chest tucked away in ${regionName}.`,
-      chestLoot: {
-        gold: goldFound,
-        item: lootItem
-      }
-    };
-  } 
-  else if (roll < 0.85) {
-    // Nothing
-    const safeXP = Math.round(playerLevel * 3);
-    const safeGold = Math.round(playerLevel * 2);
-    
-    const messages = [
-      'You travel along a peaceful pathway, enjoying the views.',
-      'The road ahead is clear. You find a moment to catch your breath.',
-      'You bypass a sleeping beast quietly and continue on your way.',
-      'A traveler greets you warmly and shares a story.',
-    ];
+  else {
+    // 25% story encounter
+    const safeXP = Math.round(playerLevel * 4 + 12);
+    const safeGold = Math.round(playerLevel * 3 + 10);
+    const randomStory = ADVENTURE_STORIES[Math.floor(Math.random() * ADVENTURE_STORIES.length)];
     
     return {
       type: 'Nothing',
-      title: 'Travel Safely',
-      description: messages[Math.floor(Math.random() * messages.length)] + ` You gain minor experience (+${safeXP} XP) and a few coins (+${safeGold} Gold).`,
+      title: '🌿 Wilds Encounter',
+      description: `${randomStory}\n\nYou safely proceed, gaining experience and minor loot.`,
       chestLoot: {
         gold: safeGold,
-        item: undefined
+        item: undefined,
+        xp: safeXP
       }
-    };
-  } 
-  else if (roll < 0.95) {
-    // Merchant Event
-    const merchantItems: Item[] = [
-      generateRandomItem('Common'),
-      generateRandomItem('Uncommon'),
-      generateRandomItem('Rare')
-    ];
-    
-    merchantItems.forEach(item => {
-      item.value = Math.round(item.value * 1.5);
-    });
-
-    return {
-      type: 'Merchant',
-      title: 'Wandering Merchant',
-      description: 'A hooded merchant sits beside a pack mule. "Greetings, traveler! Care to look at my wares? I will also buy your materials."',
-      merchantItems
-    };
-  } 
-  else {
-    // NPC Quest Giver
-    const questData = regionConfig.quests[Math.floor(Math.random() * regionConfig.quests.length)] || regionConfig.quests[0];
-    return {
-      type: 'NPC',
-      title: 'Mysterious Stranger',
-      description: `An NPC flags you down. "Traveler, I need your assistance. ${questData.description}"`,
-      quest: questData
     };
   }
 };

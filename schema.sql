@@ -189,3 +189,11 @@ CREATE POLICY "Allow anyone to manage party_invites" ON public.party_invites
 ALTER TABLE public.players ADD COLUMN IF NOT EXISTS active_region TEXT DEFAULT 'Greenwood Forest';
 ALTER TABLE public.players ADD COLUMN IF NOT EXISTS group_dungeon_finish_time BIGINT;
 ALTER TABLE public.players ADD COLUMN IF NOT EXISTS group_dungeon_region TEXT;
+
+-- New gathering professions columns
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS woodcutting_lv integer DEFAULT 1;
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS woodcutting_xp integer DEFAULT 0;
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS skinning_lv integer DEFAULT 1;
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS skinning_xp integer DEFAULT 0;
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS foraging_lv integer DEFAULT 1;
+ALTER TABLE public.players ADD COLUMN IF NOT EXISTS foraging_xp integer DEFAULT 0;

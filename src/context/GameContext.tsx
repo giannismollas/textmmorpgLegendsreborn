@@ -419,6 +419,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         herbalism_xp: playerData.professions.herbalism.xp,
         fishing_lv: playerData.professions.fishing.level,
         fishing_xp: playerData.professions.fishing.xp,
+        woodcutting_lv: playerData.professions.woodcutting?.level || 1,
+        woodcutting_xp: playerData.professions.woodcutting?.xp || 0,
+        skinning_lv: playerData.professions.skinning?.level || 1,
+        skinning_xp: playerData.professions.skinning?.xp || 0,
+        foraging_lv: playerData.professions.foraging?.level || 1,
+        foraging_xp: playerData.professions.foraging?.xp || 0,
         updated_at: new Date().toISOString()
       });
     } catch (e) {
@@ -524,6 +530,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             blacksmithing: { level: dbPlayer.blacksmithing_lv, xp: dbPlayer.blacksmithing_xp, max_xp: dbPlayer.blacksmithing_lv * 100 },
             herbalism: { level: dbPlayer.herbalism_lv, xp: dbPlayer.herbalism_xp, max_xp: dbPlayer.herbalism_lv * 100 },
             fishing: { level: dbPlayer.fishing_lv, xp: dbPlayer.fishing_xp, max_xp: dbPlayer.fishing_lv * 100 },
+            woodcutting: { level: dbPlayer.woodcutting_lv || 1, xp: dbPlayer.woodcutting_xp || 0, max_xp: (dbPlayer.woodcutting_lv || 1) * 100 },
+            skinning: { level: dbPlayer.skinning_lv || 1, xp: dbPlayer.skinning_xp || 0, max_xp: (dbPlayer.skinning_lv || 1) * 100 },
+            foraging: { level: dbPlayer.foraging_lv || 1, xp: dbPlayer.foraging_xp || 0, max_xp: (dbPlayer.foraging_lv || 1) * 100 },
           }
         };
         setPlayer(formattedPlayer);
@@ -828,6 +837,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         blacksmithing: { level: 1, xp: 0, max_xp: 100 },
         herbalism: { level: 1, xp: 0, max_xp: 100 },
         fishing: { level: 1, xp: 0, max_xp: 100 },
+        woodcutting: { level: 1, xp: 0, max_xp: 100 },
+        skinning: { level: 1, xp: 0, max_xp: 100 },
+        foraging: { level: 1, xp: 0, max_xp: 100 },
       }
     };
 
@@ -1437,10 +1449,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!player || !activeEvent || !activeEvent.chestLoot) return;
 
     const loot = activeEvent.chestLoot;
-    const finalPlayer = { ...player };
+    let finalPlayer = { ...player };
     
-    finalPlayer.gold += loot.gold;
-    let rewardText = `💰 Found +${loot.gold} Gold in the chest.`;
+    // Support gold gain or loss
+    const newGold = finalPlayer.gold + loot.gold;
+    finalPlayer.gold = Math.max(0, newGold);
+    
+    let rewardText = loot.gold >= 0 
+      ? `💰 Found +${loot.gold} Gold during exploration.` 
+      : `💸 Lost ${Math.abs(loot.gold)} Gold.`;
+
+    if (loot.xp) {
+      finalPlayer = addXP(finalPlayer, loot.xp);
+      rewardText += ` ⭐ Gained +${loot.xp} XP.`;
+    }
 
     if (loot.item) {
       const item = loot.item;
